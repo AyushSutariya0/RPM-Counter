@@ -1,0 +1,154 @@
+ORG 0000H
+	CALL FIRST_TIME
+MAIN:	
+   SETB P3.1
+   MOV R1,#80D
+
+   MOV TMOD,#01100001B    ;TIMER 1 counter mode 2, timer 0 timer mode 1
+   MOV TL1,#00H
+   MOV TH1,#00H
+   SETB TR1
+   
+    BACK:
+      MOV TH0,#000H
+      MOV TL0,#001H
+      SETB TR0
+     X3:JNB TF0,X3
+        CLR TR0
+        CLR TF0
+       DJNZ R1,BACK
+  
+    CLR P3.1
+    CLR TR1
+    CLR TR0
+    CLR TF1
+    CLR TF0
+    
+	MOV A,TL1
+	MOV R0,A
+	
+    MOV B,#0AH
+	MUL AB
+	MOV R4,B; HIGHER ORDER BYTE IN R4
+	MOV R2,A; LOWER ORDER BYTE IN R2
+	
+	CALL BIN_2_BCD
+
+ACALL LCD_INTERFACE
+SJMP MAIN	 
+	 
+	 
+FIRST_TIME:
+LCD_PORT EQU P1 ;                   assigning port1 to as lcd data port
+RS EQU P2.0;                        assigning the register select of lcd pin to P2.0
+RW EQU P2.1;                        assigning the read/write pin of lcd to P2.1
+E EQU P2.2;                         assigning the enable pin of lcd to P2.2
+CALL LCD_INIT ;                     INITIALIZE THE LCD .
+
+MOV A,#'2'
+CALL LCD_DATA
+MOV A,#'1'
+CALL LCD_DATA
+MOV A,#'B'
+CALL LCD_DATA
+MOV A,#'E'
+CALL LCD_DATA
+MOV A,#'C'
+CALL LCD_DATA
+MOV A,#'1'
+CALL LCD_DATA
+MOV A,#'2'
+CALL LCD_DATA
+MOV A,#'2'
+CALL LCD_DATA
+MOV A,#' '
+CALL LCD_DATA
+MOV A,#'A'
+CALL LCD_DATA
+MOV A,#'Y'
+CALL LCD_DATA
+MOV A,#'U'
+CALL LCD_DATA
+MOV A,#'S'
+CALL LCD_DATA
+MOV A,#'H'
+CALL LCD_DATA
+
+MOV A,#0C0H ; 
+CALL LCD_CMD
+					
+LCD_INTERFACE:
+CALL LCD_INIT ;              INITIALIZE THE LCD .
+MOV A,#'R';                  display RPM to lcd
+CALL LCD_DATA
+MOV A,#'P'
+CALL LCD_DATA
+MOV A,#'M'
+CALL LCD_DATA
+MOV A,#0C0H ;                command for cursor to second line of lcd
+CALL LCD_CMD
+MOV A,R3
+CALL LCD_DATA
+MOV A,R4
+CALL LCD_DATA
+MOV A,R5
+CALL LCD_DATA
+RET		  
+               
+LCD_INIT:
+ MOV A,#38H;                 Enalble the LCD to work for 2 lines and 5x7 matrix
+ CALL LCD_CMD;               Send the command to the LCD
+ MOV A,#0CH;                 Turn on the display and turn off the cursor of lcd
+ CALL LCD_CMD;               Send the command to the LCD
+ MOV A,#06H;                 To work in increamnent mode
+ CALL LCD_CMD;               Send the command to the LCD
+ MOV A,#01H;                 Clear the LCD screen
+ CALL LCD_CMD ;              Send the command to the LCD
+ RET ;                       Return to next to the called command
+ 
+ LCD_CMD:
+ CLR RS;                     Set register select pin of lcd to low to work in command mode
+ CLR RW;                     Set read/write pin of lcd to low to work in write mode
+ MOV LCD_PORT,A ;            Load data into lcd port
+ SETB E;                     Set enable pin of lcd to high in order to accept command
+ CALL DELAY_MS;              Delay for proper function
+ CLR E;                      Set enable pin of lcd to low to disable lcd
+ RET;                        Return to next to the called command
+ 
+ DELAY_MS:
+ MOV R7, #100 ;              Outer loop count
+ DLY1:
+ MOV R6, #100 ;              Inner loop count
+ DLY2:
+ DJNZ R6, DLY2 ;             Decrement inner loop counter and jump if not zero
+ DJNZ R7, DLY1 ;             Decrement outer loop counter and jump if not zero
+ RET ;                       Return to next to the called command
+ 
+ LCD_DATA:
+ SETB RS;                    Set register select pin of lcd to high to work in data mode
+ CLR RW;                     Set read/write pin of lcd to low to work in write mode
+ MOV LCD_PORT,A;             Load data into port
+ SETB E;                     set enable pin of lcd to high in order to accept command
+ CALL DELAY_MS;              delay for proper function
+ CLR E;                      set enable pin of lcd to low to disable lcd
+ RET;                        Return to next to the called command
+ 
+ BIN_2_BCD:
+ MOV A,R2
+ MOV B,#64H;                 MOVING 100 INTO B
+ DIV AB;                     Divide A by B to get first digit
+ ADD A,#30H;                 Adding 30 to get ascii value
+ MOV R3,A
+ 
+ MOV A,B
+ MOV B,#0AH;				MOVING 100 INTO B
+ DIV AB;					Divide A by B to get first digit
+ ADD A,#30H;				Adding 30 to get ascii value
+ MOV R4,A
+ 
+ MOV A,B
+ ADD A,#30H;                Adding 30 to get ascii digit
+ MOV R5,A
+ RET
+ 
+ END
